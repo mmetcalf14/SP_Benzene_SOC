@@ -38,8 +38,7 @@ MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
             }
             else if ((i+1 == L))
             {
-                //                Ham_Mat(0, i) = -J1;
-                //                Ham_Mat(i, 0) = -J1;
+
                 H(0,i) = -t1;
                 H(i,0) = -t1;
             }
@@ -68,17 +67,33 @@ MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
         }
     }
     
-    
+    complex<double> val;
+
     //spin-dependent SOC term
     if(species == 0)//spin up, top block
     {
-        H(0,2) = I*gamma_SOC;
-        H(2,0) = -1.*I*gamma_SOC;
+        val = gamma_SOC*exp(I*Pi/4.);
+//            if(val.real() < 1e-13)
+//            {
+//                val.real(0);
+//            }
+        //H(0,2) = I*gamma_SOC;
+        //H(2,0) = -1.*I*gamma_SOC;
+        H(2,0) = val;
+        
+        H(0,2) = conj(val);
     }
     else if(species == 1)//spin down, bottom block
     {
-        H(0,2) = -1.*I*gamma_SOC;
-        H(2,0) =  I*gamma_SOC;
+        val = -1.*gamma_SOC*exp(I*Pi/4.);
+//            if(val.real() < 1e-13)
+//            {
+//                val.real(0);
+//            }
+//        H(0,2) = -1.*I*gamma_SOC;
+//        H(2,0) =  I*gamma_SOC;
+        H(2,0) = val;
+        H(0,2) = conj(val);
     }
     else{
         cout << "Wrong spin species \n";
@@ -205,15 +220,15 @@ SpMat Hamiltonian::Block_SpHam_Periodic(int species)
 void Hamiltonian::Total_Ham()
 {
  
-    Ham_Top = Block_DenseHam_Periodic(0);
-    Ham_Btm = Block_DenseHam_Periodic(1);
+    Ham_Top = Block_DenseHam_Periodic(0);//up
+    Ham_Btm = Block_DenseHam_Periodic(1);//dn
     
     Ham_Mat.topLeftCorner(L,L) = Ham_Top;
     Ham_Mat.bottomRightCorner(L,L) = Ham_Btm;
 //    Ham_Top.setZero();
 //    Ham_Btm.setZero();
     
-    //cout << "Total Ham \n" <<Ham_Mat << endl;
+    cout << "Total Ham \n" <<Ham_Mat << endl;
     
 //    Ham_Sp = Ham_Mat.sparseView();
 //    
@@ -291,6 +306,7 @@ void Hamiltonian::Diagonalize_CompHam(MatrixXcd H)
     SelfAdjointEigenSolver<Eigen::MatrixXcd> Diag(H);
     EVal = Diag.eigenvalues();
     EVec = Diag.eigenvectors();
+    cout << "Evals:\n" << EVal << endl;
     //cout << "EVec: " << EVec << endl;
     GS = EVec.col(0);
     
@@ -316,7 +332,8 @@ complex<double> Hamiltonian::BondCurrent(int type, int site_i, int site_j)
     
     if(type == 0) //spin up
     {
-        Cij = GS(site_i)*GS(site_j)*Ham_Mat(site_i,site_j);
+        
+        Cij = conj(EVec(site_i, 1))*EVec(site_j, 1)*Ham_Mat(site_i,site_j);
         cout << Ham_Mat(site_i,site_j) << endl;
         cout << "Cij: " << Cij << endl;
         J = -2.*Cij.imag();
@@ -324,7 +341,8 @@ complex<double> Hamiltonian::BondCurrent(int type, int site_i, int site_j)
     }
     else if(type == 1)//spin down
     {
-        Cij = EVec(site_i, 1)*EVec(site_j, 1)*Ham_Mat(site_i,site_j);
+        //the eigenvector location should be col 1 in the degenerate case
+        Cij = conj(EVec(site_i, 0))*EVec(site_j, 0)*Ham_Mat(site_i,site_j);
         J = -2.*Cij.imag();
         cout << "Cij: " << Cij << endl;
         cout << "J: " << J << endl;

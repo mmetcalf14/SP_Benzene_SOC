@@ -54,15 +54,16 @@ int main(int argc, const char * argv[]) {
     Hamiltonian ham(t_1, t_2, gamma, Nsite);
     
     //Execute Functions
-    //ham.Total_Ham();
-    ham.Peierls_Hamiltonian_pb();
+    ham.Total_Ham();
+    //ham.Peierls_Hamiltonian_pb();
     //ham.Diagonalize(fout, Fout);
     
     //Current
     //ProbCurrent(ham);
     
     complex<double> J34_up = ham.BondCurrent(0, 2, 3);
-    cout << "J: " << J34_up << endl;
+    complex<double> J34_dn = ham.BondCurrent(1, 8, 9);
+    cout << "Js: " << J34_up - J34_dn << endl;
     
     //Eval over gamma loop
 //    for(int g = 0; g <= Gm ; g++)
@@ -87,8 +88,8 @@ void ProbCurrent(Hamiltonian &h)
     complex<double> J_Tot;
     complex<double> JsT;
     
-    J34_up = h.BondCurrent(0, 2, 3);
-    J34_dn = h.BondCurrent(1, 8, 9);
+    J34_up = h.BondCurrent(0, 1, 2);
+    J34_dn = h.BondCurrent(1, 7, 8);
     J_Tot = J34_dn + J34_up;
     JsT = J34_up - J34_dn;
     
