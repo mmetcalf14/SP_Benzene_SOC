@@ -21,7 +21,7 @@ Hamiltonian::Hamiltonian(double _t1, double _t2, double _gamma_SOC, int Nsites)
     Ham_Btm = MatrixXcd::Zero(L,L);
 }
 
-MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
+MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species, double phi)
 {
     MatrixXcd H = MatrixXcd::Zero(L,L);
     
@@ -72,7 +72,7 @@ MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
     //spin-dependent SOC term
     if(species == 0)//spin up, top block
     {
-        val = gamma_SOC*exp(I*Pi/4.);
+        val = gamma_SOC*exp(I*phi);
 //            if(val.real() < 1e-13)
 //            {
 //                val.real(0);
@@ -85,7 +85,7 @@ MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
     }
     else if(species == 1)//spin down, bottom block
     {
-        val = -1.*gamma_SOC*exp(I*Pi/4.);
+        val = -1.*gamma_SOC*exp(I*phi);
 //            if(val.real() < 1e-13)
 //            {
 //                val.real(0);
@@ -103,6 +103,59 @@ MatrixXcd Hamiltonian::Block_DenseHam_Periodic(int species)
     return H;
 }
 
+MatrixXcd Hamiltonian::BlockDense_TotalSOC(int species, double phi)
+{
+    MatrixXcd H = MatrixXcd::Zero(L,L);
+    complex<double> val;
+    if(species == 0)
+    {
+        val = gamma_SOC*exp(I*phi);
+    }
+    else{
+        val = -1.*gamma_SOC*exp(I*phi);
+    }
+    
+    for(int i = 0; i < L; i++)
+    {
+            if( (i+1) < L)//taking care of NN hopping
+            {
+                H(i+1,i) = -t1;
+                H(i,i+1) = -t1;
+            
+            }
+            else if ((i+1 == L))
+            {
+                
+                H(0,i) = -t1;
+                H(i,0) = -t1;
+            }
+            else{
+                
+            }
+        
+        if( (i+2) < L)//taking care of NNN hopping
+        {
+            H(i+2,i) = conj(val);
+            H(i,i+2) = val;
+            //cout << "i: " << i << " i+2: " << i+2 << endl;
+            
+        }
+        else if ((i+2 == L))
+        {
+            //cout << "ii: " << i << " io+2: " << i+2 << endl;
+            H(0,i) = conj(val);
+            H(i,0) = val;
+        }
+        else{
+            //cout << "i0: " << i << " ii+2: " << i+2 << endl;
+            H(1,i) = conj(val);
+            H(i,1) = val;
+        }
+    }
+
+    return H;
+  
+}
 void Hamiltonian::Peierls_Hamiltonian_pb()
 {
     std::vector<Tp> TL;
@@ -217,18 +270,31 @@ SpMat Hamiltonian::Block_SpHam_Periodic(int species)
     return H;
 }
 
-void Hamiltonian::Total_Ham()
+void Hamiltonian::Total_Ham(int Ltp, double phi)
 {
  
-    Ham_Top = Block_DenseHam_Periodic(0);//up
-    Ham_Btm = Block_DenseHam_Periodic(1);//dn
+    if(Ltp == 0)
+    {
+    Ham_Top = Block_DenseHam_Periodic(0, phi);//up
+    Ham_Btm = Block_DenseHam_Periodic(1, phi);//dn
+    }
+    else if(Ltp == 1)//in the future LTp could represent the # of links
+    {
+        Ham_Top = BlockDense_TotalSOC(0, phi);
+        Ham_Btm = BlockDense_TotalSOC(1, phi);
+    }
+    else{
+        
+    }
     
     Ham_Mat.topLeftCorner(L,L) = Ham_Top;
     Ham_Mat.bottomRightCorner(L,L) = Ham_Btm;
 //    Ham_Top.setZero();
 //    Ham_Btm.setZero();
     
-    cout << "Total Ham \n" <<Ham_Mat << endl;
+    //cout << "Total Ham \n" <<Ham_Mat << endl;
+//    cout << "Ham top\n" <<Ham_Top << endl;
+//    cout << "Ham btm\n" <<Ham_Btm << endl;
     
 //    Ham_Sp = Ham_Mat.sparseView();
 //    
@@ -236,7 +302,8 @@ void Hamiltonian::Total_Ham()
     //Ham_Mat.setZero();
     
     //Do not do block diagonalization. Want all eigenvectors. Although you could...
-    Diagonalize_CompHam(Ham_Mat);
+    //Diagonalize_CompHam(Ham_Mat);
+    Diagonalize_CompHam(Ham_Top);
 }
 
 void Hamiltonian::Diagonalize(ofstream &output1, ofstream &output2)
@@ -295,7 +362,9 @@ void Hamiltonian::Diagonalize(ofstream &output1, ofstream &output2)
 
 void Hamiltonian::Diagonalize_CompHam_SP(SpMat Ham)
 {
+    cout << "setting ham\n";
     MatrixXcd H = MatrixXcd(Ham);
+    cout << "Diagonalizing\n";
     SelfAdjointEigenSolver<Eigen::MatrixXcd> Diag(H);
     EVal = Diag.eigenvalues();
     EVec = Diag.eigenvectors();
@@ -303,14 +372,15 @@ void Hamiltonian::Diagonalize_CompHam_SP(SpMat Ham)
 
 void Hamiltonian::Diagonalize_CompHam(MatrixXcd H)
 {
+   cout << "Diagonalizing\n";
     SelfAdjointEigenSolver<Eigen::MatrixXcd> Diag(H);
     EVal = Diag.eigenvalues();
     EVec = Diag.eigenvectors();
-    cout << "Evals:\n" << EVal << endl;
-    //cout << "EVec: " << EVec << endl;
-    GS = EVec.col(0);
+//    cout << "Evals:\n" << EVal << endl;
+//    cout << "EVec: " << EVec << endl;
+    //GS = EVec.col(0);
     
-    cout << "GS: " << GS << endl;
+    //cout << "GS: " << GS << endl;
 //    cout << "GS mod: \n";
 //    for(int it = 0; it < L; it++)
 //    {
@@ -323,38 +393,16 @@ complex<double> Hamiltonian::BondCurrent(int type, int site_i, int site_j)
     complex<double> J;
     complex<double> Cij;
     
-    cout << "site1: " << site_i <<" site2: " << site_j << endl;
-    
-    //i < j
-    //Cij = EVec(0, site_i)*EVec(0, site_j)*Ham_Sp.coeffRef(site_i,site_j);//sparse
-    //Cij = GS(site_i)*GS(site_j)*Ham_Mat(site_i,site_j);//dense
-
-    
-    if(type == 0) //spin up
-    {
-        
-        Cij = conj(EVec(site_i, 1))*EVec(site_j, 1)*Ham_Mat(site_i,site_j);
-        cout << Ham_Mat(site_i,site_j) << endl;
-        cout << "Cij: " << Cij << endl;
-        J = -2.*Cij.imag();
-        cout << "J: " << J << endl;
-    }
-    else if(type == 1)//spin down
-    {
-        //the eigenvector location should be col 1 in the degenerate case
-        Cij = conj(EVec(site_i, 0))*EVec(site_j, 0)*Ham_Mat(site_i,site_j);
-        J = -2.*Cij.imag();
-        cout << "Cij: " << Cij << endl;
-        cout << "J: " << J << endl;
-    }
-    else{
-        cout <<"somthing else\n";
-    }
-    
+    Cij = conj(EVec(site_i, type))*EVec(site_j, type)*Ham_Mat(site_i,site_j);
+    J = -2.*Cij.imag();
     
     return J;
 }
 
+VectorXd Hamiltonian::ReturnEval()
+{
+        return EVal;
+}
 
 void Hamiltonian::ResetGamma(double g)
 {

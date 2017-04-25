@@ -25,6 +25,8 @@ typedef Eigen::Triplet<complex<double>> Tp;
 
 class Hamiltonian
 {
+    friend class SlaterDet;
+    
 private:
     
     double t1, t2, gamma_SOC;
@@ -52,14 +54,16 @@ public:
     
     
     SpMat Block_SpHam_Periodic(int species);
-    MatrixXcd Block_DenseHam_Periodic(int species);
-    void Total_Ham();
+    MatrixXcd Block_DenseHam_Periodic(int species, double phi);
+    MatrixXcd BlockDense_TotalSOC(int species, double phi);
+    void Total_Ham(int Ltp, double phi);
     void Peierls_Hamiltonian_pb();
     void Diagonalize(ofstream &output1, ofstream &output2);
     void Diagonalize_CompHam_SP(SpMat Ham);
     void Diagonalize_CompHam(MatrixXcd H);
     void ResetGamma(double g);
     void ResetHam();
+    VectorXd ReturnEval();
     complex<double> BondCurrent(int type, int site_i, int site_j);
     
 };
